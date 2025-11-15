@@ -9,9 +9,10 @@
 1. Hero buttons flip between addition/subtraction menus.
 2. Each stage card defines a fact generator (`buildFacts` functions inside `app.js`).
 3. Pressing "Start Game" seeds `state.facts` with that stage's problems, builds the tracker array, and renders the scoreboard grid via D3.
-4. Stage completions persist in `localStorage` (`friendsOfBenStageProgress`) so cards show a “Done” badge and the detail panel flags status on return visits.
+4. Stage completions persist in `localStorage` (`friendsOfBenStageProgress`) so cards show a “Done” badge, the detail panel flags status, and both the fastest timer used (3/5/7/10 seconds) and the total time it took for that fastest run are recorded with attempt counts.
 5. Tracker weights mirror the timestables app: correct answers lower the weight, mistakes/timeouts add weight, and weighted random selection drives the next question.
-6. When every tile cools to zero the UI locks, celebrates mastery, and prompts a new selection.
+6. Missed or timed-out facts reveal the answer but lock the game until the player re-enters that value, matching the classic rote-learning flow.
+7. When every tile cools to zero the UI locks, celebrates mastery, and prompts a new selection.
 
 ## Extending Smarts
 - Adding a new stage: drop an entry into `additionStages` or `subtractionStages` with an id, title, focus line, description, and `buildFacts` callback. Keep the facts small-digit (<=20) and return an array shaped like `{prompt, answer, a, b, operator}`. The `stage.id` doubles as the persistence key in `friendsOfBenStageProgress`.

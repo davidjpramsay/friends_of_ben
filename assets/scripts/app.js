@@ -292,6 +292,8 @@
     countdown: 0,
     nextQuestionTimeout: null,
     completedStages: loadStageProgress(),
+    awaitingCorrection: false,
+    startTimestamp: null,
   };
 
   const refs = {
@@ -312,6 +314,7 @@
     menuView: document.getElementById("menuView"),
     gameView: document.getElementById("gameView"),
     backButton: document.getElementById("backButton"),
+    heroPanel: document.getElementById("heroPanel"),
   };
 
   const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
@@ -328,10 +331,41 @@
 
   const isStageCompleted = (stageId) => Boolean(state.completedStages[stageId]);
 
-  const markCurrentStageCompleted = () => {
+  const markCurrentStageCompleted = (elapsedSeconds = 0) => {
     if (!state.stage) return;
-    if (isStageCompleted(state.stage.id)) return;
-    state.completedStages[state.stage.id] = { completedAt: Date.now() };
+    const stageId = state.stage.id;
+    const currentTime = state.timerLimit;
+    const record = state.completedStages[stageId] || {};
+
+    const times = Array.isArray(record.times) ? record.times : [];
+    times.push(currentTime);
+
+    const durations = Array.isArray(record.durations) ? record.durations : [];
+    durations.push(elapsedSeconds);
+
+    let fastest =
+      typeof record.fastest === "number" ? record.fastest : undefined;
+    let fastestDuration =
+      typeof record.fastestDuration === "number"
+        ? record.fastestDuration
+        : undefined;
+
+    if (fastest === undefined || currentTime < fastest) {
+      fastest = currentTime;
+      fastestDuration = elapsedSeconds;
+    } else if (currentTime === fastest) {
+      if (fastestDuration === undefined || elapsedSeconds < fastestDuration) {
+        fastestDuration = elapsedSeconds;
+      }
+    }
+
+    state.completedStages[stageId] = {
+      completedAt: Date.now(),
+      times,
+      durations,
+      fastest,
+      fastestDuration,
+    };
     saveStageProgress(state.completedStages);
     updateStageStatusDisplay();
     renderStageMenu();
@@ -347,9 +381,21 @@
       resetStageDetails();
       return;
     }
-    refs.stageStatus.textContent = isStageCompleted(state.stage.id)
-      ? "Status: Completed - replay any time!"
-      : "Status: In progress";
+    const record = state.completedStages[state.stage.id];
+    if (record) {
+      const fastest = record.fastest ? `${record.fastest}s` : "n/a";
+      const fastestDuration =
+        typeof record.fastestDuration === "number"
+          ? `${record.fastestDuration}s`
+          : "n/a";
+      refs.stageStatus.innerHTML = `
+        Status: Completed - replay any time!<br>
+        Fastest timer: ${fastest} (finished in ${fastestDuration})<br>
+        Attempts: ${record.times ? record.times.length : 0}
+      `;
+    } else {
+      refs.stageStatus.textContent = "Status: In progress";
+    }
   };
 
   // Event wiring ----------------------------------------------------------
@@ -378,7 +424,9 @@
     state.facts = [];
     state.tracker = [];
     state.activeIndex = null;
+    state.awaitingCorrection = false;
     state.timerLimit = parseInt(refs.timeSelect.value, 10);
+    state.startTimestamp = null;
     refs.startButton.disabled = true;
     refs.startButton.textContent = "Start Game";
     resetStageDetails();
@@ -454,6 +502,8 @@
     state.tracker = state.facts.map(() => 2);
     state.timerLimit = parseInt(refs.timeSelect.value, 10);
     state.activeIndex = null;
+    state.awaitingCorrection = false;
+    state.startTimestamp = Date.now();
     refs.startButton.textContent = "Restart Stage";
     showGameView();
     refs.answerInput.disabled = false;
@@ -503,11 +553,18 @@
     refs.submitButton.disabled = true;
     refs.timerDisplay.textContent = "Done";
     clearPendingQuestion();
-    markCurrentStageCompleted();
+    const elapsedSeconds = state.startTimestamp
+      ? Math.max(0, Math.round((Date.now() - state.startTimestamp) / 1000))
+      : 0;
+    markCurrentStageCompleted(elapsedSeconds);
   };
 
   const handleSubmit = () => {
     if (state.activeIndex === null || refs.answerInput.disabled) {
+      return;
+    }
+    if (state.awaitingCorrection) {
+      checkCorrection();
       return;
     }
     const fact = state.facts[state.activeIndex];
@@ -522,14 +579,13 @@
       adjustWeight(state.activeIndex, -2);
       refs.statusText.textContent = "Nice! That fact cools down on the grid.";
       refs.lastFactDisplay.textContent = `${fact.prompt} = ${fact.answer} (great job)`;
+      refs.answerInput.value = "";
+      buildScoreboard();
+      updateProgress();
+      queueNextQuestion();
     } else {
-      adjustWeight(state.activeIndex, 4);
-      refs.statusText.textContent = `Almost! ${fact.prompt} = ${fact.answer}.`;
-      refs.lastFactDisplay.textContent = `${fact.prompt} = ${fact.answer}`;
+      handleIncorrectAttempt(fact);
     }
-    buildScoreboard();
-    updateProgress();
-    queueNextQuestion();
   };
 
   const adjustWeight = (index, delta) => {
@@ -580,18 +636,65 @@
     stopTimer();
     if (state.activeIndex === null) return;
     const fact = state.facts[state.activeIndex];
+    handleIncorrectAttempt(fact, true);
+  };
+
+  const handleIncorrectAttempt = (fact, wasTimeout = false) => {
     adjustWeight(state.activeIndex, 4);
-    refs.statusText.textContent = `Time! ${fact.prompt} = ${fact.answer}.`;
+    refs.statusText.textContent = wasTimeout
+      ? `Time! ${fact.prompt} = ${fact.answer}. Type it in to continue.`
+      : `Almost! ${fact.prompt} = ${fact.answer}. Type it in to continue.`;
     refs.lastFactDisplay.textContent = `${fact.prompt} = ${fact.answer}`;
+    refs.answerInput.value = "";
+    refs.answerInput.placeholder = fact.answer.toString();
+    refs.answerInput.dataset.expected = fact.answer.toString();
+    refs.submitButton.textContent = "Confirm";
+    refs.submitButton.classList.add("secondary-btn--warning");
+    refs.submitButton.disabled = false;
     buildScoreboard();
     updateProgress();
-    queueNextQuestion();
+    startLockStep();
+  };
+
+  const startLockStep = () => {
+    refs.answerInput.disabled = false;
+    refs.answerInput.focus();
+    refs.answerInput.addEventListener("input", ensurePlaceholderCleared, {
+      once: true,
+    });
+    state.awaitingCorrection = true;
+  };
+
+  const ensurePlaceholderCleared = () => {
+    refs.answerInput.placeholder = "?";
+  };
+
+  const checkCorrection = () => {
+    const expected = refs.answerInput.dataset.expected;
+    const attempt = refs.answerInput.value.trim();
+    if (attempt === expected) {
+      refs.statusText.textContent = "Thanks! Let's keep going.";
+      refs.submitButton.textContent = "Check";
+      refs.submitButton.classList.remove("secondary-btn--warning");
+      refs.answerInput.dataset.expected = "";
+      refs.answerInput.placeholder = "?";
+      refs.answerInput.value = "";
+      state.awaitingCorrection = false;
+      askQuestion();
+    } else {
+      refs.statusText.textContent = `Type ${expected} to move on.`;
+    }
   };
 
   const resetAnswerInputs = () => {
     refs.answerInput.value = "";
     refs.answerInput.disabled = true;
     refs.submitButton.disabled = true;
+    refs.answerInput.placeholder = "?";
+    refs.answerInput.dataset.expected = "";
+    refs.submitButton.textContent = "Check";
+    refs.submitButton.classList.remove("secondary-btn--warning");
+    state.awaitingCorrection = false;
   };
 
   const colorForWeight = (weight) => {
@@ -652,6 +755,10 @@
     refs.menuView.removeAttribute("hidden");
     refs.gameView.classList.add("hidden");
     refs.gameView.setAttribute("hidden", "");
+    if (refs.heroPanel) {
+      refs.heroPanel.classList.remove("hidden");
+      refs.heroPanel.removeAttribute("hidden");
+    }
   };
 
   const showGameView = () => {
@@ -659,6 +766,10 @@
     refs.gameView.removeAttribute("hidden");
     refs.menuView.classList.add("hidden");
     refs.menuView.setAttribute("hidden", "");
+    if (refs.heroPanel) {
+      refs.heroPanel.classList.add("hidden");
+      refs.heroPanel.setAttribute("hidden", "");
+    }
   };
 
   const returnToMenu = () => {
@@ -681,6 +792,7 @@
     state.facts = [];
     state.tracker = [];
     state.activeIndex = null;
+    state.startTimestamp = null;
     refs.startButton.textContent = "Start Game";
     buildScoreboard();
     renderStageMenu();

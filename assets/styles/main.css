@@ -303,6 +303,11 @@ select {
   border: 2px solid transparent;
 }
 
+.secondary-btn--warning {
+  background: rgba(255, 107, 107, 0.15);
+  color: #c92a2a;
+}
+
 .secondary-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
