@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Friends of Ben</title>
+    <meta
+      name="description"
+      content="Friends of Ben helps kids practice adding and subtracting small digits with weekly menus inspired by classic programs."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Space+Grotesk:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles/main.css" />
+  </head>
+  <body>
+    <header class="hero" id="top">
+      <div class="hero__content">
+        <p class="hero__eyebrow">Daily facts - Friendly scoreboard</p>
+        <h1>Friends of Ben</h1>
+        <p class="hero__lead">
+          A modern practice space for little mathematicians. Pick a week from
+          the adding or subtracting program, set the timer, and let the
+          scoreboard guide their mastery.
+        </p>
+        <div class="hero__modes">
+          <button class="mode-btn active" data-mode="addition">
+            Addition Journey
+          </button>
+          <button class="mode-btn" data-mode="subtraction">
+            Subtraction Quest
+          </button>
+        </div>
+        <p class="hero__hint">
+          Choose a book to load the weekly menus inspired by the reference
+          program.
+        </p>
+      </div>
+      <div class="hero__card">
+        <h2>Weekly Highlights</h2>
+        <ul id="weekSummary" class="week-summary"></ul>
+      </div>
+    </header>
+
+    <main>
+      <section class="menu-panel">
+        <div class="menu-panel__weeks" id="weekMenu"></div>
+        <div class="menu-panel__actions">
+          <div class="control-block">
+            <p class="control-title">Focus Week</p>
+            <p id="weekDescription" class="control-copy">
+              Tap a week to preview its focus, then start the practice set.
+            </p>
+          </div>
+          <div class="control-block inline">
+            <label for="timeSelect">Time per question</label>
+            <select id="timeSelect">
+              <option value="10">10 seconds</option>
+              <option value="7">7 seconds</option>
+              <option value="5">5 seconds</option>
+              <option value="3">3 seconds</option>
+            </select>
+          </div>
+          <button id="startButton" class="primary-btn" disabled>
+            Begin Practice
+          </button>
+        </div>
+      </section>
+
+      <section class="game-panel">
+        <div class="game-status">
+          <div>
+            <p class="label">Timer</p>
+            <p id="timerDisplay" class="value">-</p>
+          </div>
+          <div>
+            <p class="label">Progress</p>
+            <p id="progressDisplay" class="value">0 mastered</p>
+          </div>
+          <div>
+            <p class="label">Last fact</p>
+            <p id="lastFactDisplay" class="value">None yet</p>
+          </div>
+        </div>
+        <div class="question-card">
+          <p id="weekLabel" class="week-label">
+            Select a week to begin.
+          </p>
+          <h2 id="questionPrompt" class="question-prompt">
+            Ready when you are!
+          </h2>
+          <div class="answer-row">
+            <input
+              type="number"
+              id="answerInput"
+              placeholder="?"
+              autocomplete="off"
+              inputmode="numeric"
+              disabled
+            />
+            <button id="submitButton" class="secondary-btn" disabled>
+              Check
+            </button>
+          </div>
+          <p id="statusText" class="status-text"></p>
+        </div>
+        <div class="scoreboard-panel">
+          <div class="scoreboard-header">
+            <h3>Scoreboard</h3>
+            <p class="scoreboard-hint">
+              Green tiles = mastered - Orange = practicing - Red = retry soon
+            </p>
+          </div>
+          <div id="scoreboard" class="scoreboard"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Built with D3.js for the scoreboard grid and the classic tracker system
+        from the original Times Tables practice app.
+      </p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="assets/scripts/app.js"></script>
+  </body>
+</html>
