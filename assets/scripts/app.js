@@ -74,10 +74,14 @@
   const buildPairsThatMakeTen = () => {
     const facts = [];
     for (let a = 0; a <= 10; a += 1) {
-      const b = 10 - a;
-      if (b < 0 || b > 10) continue;
-      if (a > b) continue;
-      pushFact(facts, a, b, "+", { commutative: a !== b });
+      const partner = 10 - a;
+      facts.push({
+        a,
+        b: partner,
+        operator: "+",
+        prompt: `${a} + ? = 10`,
+        answer: partner,
+      });
     }
     return facts;
   };
