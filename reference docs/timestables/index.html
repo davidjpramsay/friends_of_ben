@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Times Tables</title>
+        <meta name="description" content="Learn you times tables.">
+        <link rel="stylesheet" href="_styles/main.css">
+        <script src="_scripts/timestables.js"></script>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/6.2.2/math.min.js"></script>        
+    </head>
+    <body>
+        
+        <h1>Times Tables</h1>
+
+        <label for="gameType">Game Type:</label>
+            <select id="gameType">
+            <option value="2s">2's</option>
+            <option value="3s">3's</option>
+            <option value="4s">4's</option>
+            <option value="5s">5's</option>
+            <option value="6s">6's</option>
+            <option value="7s">7's</option>
+            <option value="8s">8's</option>
+            <option value="9s">9's</option>
+            <option value="10s">10's</option>
+            <option value="11s">11's</option>
+            <option value="12s">12's</option>
+            <option value="all">All</option>
+            </select>
+
+            <label for="gameTime">Game Time:</label>
+            <select id="gameTime">
+            <option value="10sec">10 seconds</option>
+            <option value="5sec">5 seconds</option>
+            <option value="3sec">3 seconds</option>
+        </select>
+        <br>
+        <br>
+        <input type="button" value="Start!" onclick="tt_btn()"/>
+
+        <div id="buildArea"></div>
+
+    </body>
+</html>
+
