@@ -75,12 +75,24 @@
     const facts = [];
     for (let a = 0; a <= 10; a += 1) {
       const partner = 10 - a;
-      facts.push({
-        a,
-        b: partner,
-        operator: "+",
-        prompt: `${a} + ? = 10`,
-        answer: partner,
+      const formats = [
+        {
+          prompt: `${a} + ? = 10`,
+          answer: partner,
+        },
+        {
+          prompt: `? + ${a} = 10`,
+          answer: partner,
+        },
+      ];
+      formats.forEach((format) => {
+        facts.push({
+          a,
+          b: partner,
+          operator: "+",
+          prompt: format.prompt,
+          answer: format.answer,
+        });
       });
     }
     return facts;
