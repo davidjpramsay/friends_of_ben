@@ -403,11 +403,13 @@
       const fastestDuration =
         typeof record.fastestDuration === "number"
           ? `${record.fastestDuration}s`
-          : "n/a";
+          : null;
+      const durationText = fastestDuration
+        ? ` (finished in ${fastestDuration})`
+        : "";
       refs.stageStatus.innerHTML = `
         Status: Completed - replay any time!<br>
-        Fastest timer: ${fastest} (finished in ${fastestDuration})<br>
-        Attempts: ${record.times ? record.times.length : 0}
+        Fastest timer: ${fastest}${durationText}
       `;
     } else {
       refs.stageStatus.textContent = "Status: In progress";
