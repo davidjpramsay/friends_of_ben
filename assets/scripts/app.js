@@ -1,6 +1,31 @@
 (() => {
   "use strict";
 
+  const STORAGE_KEY = "friendsOfBenStageProgress";
+  const defaultStageDescription =
+    "Tap a stage to preview its focus, then start the practice set.";
+  const defaultStageStatus = "Status: select a stage to see progress.";
+
+  const loadStageProgress = () => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (error) {
+      console.warn("Unable to read stage progress", error);
+      return {};
+    }
+  };
+
+  const saveStageProgress = (progress) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    } catch (error) {
+      console.warn("Unable to save stage progress", error);
+    }
+  };
+
   // Helpers ---------------------------------------------------------------
   const range = (start, end) =>
     Array.from({ length: end - start + 1 }, (_, i) => start + i);
@@ -21,12 +46,25 @@
     }
   };
 
-  const buildAddWithFixed = (addends, min = 0, max = 10) => {
+  const buildAddWithFixed = (addends, min = 0, max = 10, options = {}) => {
+    const { includeReverse = false } = options;
     const facts = [];
+    const seen = new Set();
+
+    const addPair = (first, second) => {
+      const key = `${first}|${second}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      facts.push(makeFact(first, second, "+"));
+    };
+
     range(min, max).forEach((base) => {
       addends.forEach((add) => {
         if (base + add <= 20) {
-          facts.push(makeFact(base, add, "+"));
+          addPair(base, add);
+          if (includeReverse && base !== add) {
+            addPair(add, base);
+          }
         }
       });
     });
@@ -44,17 +82,25 @@
     return facts;
   };
 
-  const buildSumsLessThan = (cap = 10) => {
+  const buildSumsLessThan = (cap = 10, options = {}) => {
+    const { includeReverse = false } = options;
     const facts = [];
+    const seen = new Set();
+
+    const addPair = (first, second) => {
+      const key = `${first}|${second}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      facts.push(makeFact(first, second, "+"));
+    };
+
     for (let a = 0; a < cap; a += 1) {
-      for (let b = 0; b < cap; b += 1) {
+      for (let b = a; b < cap; b += 1) {
         if (a + b >= cap) continue;
-        const low = Math.min(a, b);
-        const high = Math.max(a, b);
-        if (facts.find((fact) => fact.a === low && fact.b === high && fact.operator === "+")) {
-          continue;
+        addPair(a, b);
+        if (includeReverse && a !== b) {
+          addPair(b, a);
         }
-        facts.push(makeFact(low, high, "+"));
       }
     }
     return facts;
@@ -111,18 +157,18 @@
   };
 
   // Program data ----------------------------------------------------------
-  const additionWeeks = [
+  const additionStages = [
     {
       id: "add-w1",
-      title: "Week 1 - Adding One and Two",
+      title: "Stage 1 - Adding One and Two",
       focus: "Make +1/+2 jumps automatic.",
       description:
         "Build fact power with every number that adds one or two. The scoreboard celebrates quick counting.",
-      buildFacts: () => buildAddWithFixed([1, 2]),
+      buildFacts: () => buildAddWithFixed([1, 2], 0, 10, { includeReverse: true }),
     },
     {
       id: "add-w2",
-      title: "Week 2 - Pairs That Make Ten",
+      title: "Stage 2 - Pairs That Make Ten",
       focus: "Find every friend of ten.",
       description:
         "Practice the classic ten-frame partners so students instantly know what completes ten.",
@@ -130,31 +176,31 @@
     },
     {
       id: "add-w3",
-      title: "Week 3 - Sums Less Than Ten",
+      title: "Stage 3 - Sums Less Than Ten",
       focus: "Keep totals under ten.",
       description:
         "Mix-and-match addends that always stay below ten to reinforce flexible counting strategies.",
-      buildFacts: () => buildSumsLessThan(10),
+      buildFacts: () => buildSumsLessThan(10, { includeReverse: true }),
     },
     {
       id: "add-w4",
-      title: "Week 4 - Adding Nine",
+      title: "Stage 4 - Adding Nine",
       focus: "Use make ten minus one.",
       description:
         "Add nine by imagining a ten and removing one - every fact here follows that rhythm.",
-      buildFacts: () => buildAddWithFixed([9]),
+      buildFacts: () => buildAddWithFixed([9], 0, 10, { includeReverse: true }),
     },
     {
       id: "add-w5",
-      title: "Week 5 - Adding Eight",
+      title: "Stage 5 - Adding Eight",
       focus: "Use make ten minus two.",
       description:
-        "A cozy repeat of week four, now with eights so learners solidify another near-ten strategy.",
-      buildFacts: () => buildAddWithFixed([8]),
+        "A cozy repeat of stage four, now with eights so learners solidify another near-ten strategy.",
+      buildFacts: () => buildAddWithFixed([8], 0, 10, { includeReverse: true }),
     },
     {
       id: "add-w6",
-      title: "Week 6 - Look at the Leftovers",
+      title: "Stage 6 - Look at the Leftovers",
       focus: "Bridge through ten and beyond.",
       description:
         "These sums hop past ten. Learners split off leftovers to hit the next ten before finishing.",
@@ -162,10 +208,10 @@
     },
   ];
 
-  const subtractionWeeks = [
+  const subtractionStages = [
     {
       id: "sub-w1",
-      title: "Week 1 - Subtracting One and Two",
+      title: "Stage 1 - Subtracting One and Two",
       focus: "Count back one or two.",
       description:
         "Automatic take-away of one or two keeps counting nimble. Every number from 1-12 appears.",
@@ -173,7 +219,7 @@
     },
     {
       id: "sub-w2",
-      title: "Week 2 - Subtracting Three and Four",
+      title: "Stage 2 - Subtracting Three and Four",
       focus: "Hop back three or four.",
       description:
         "Build confident hops of three and four while results remain friendly and non-negative.",
@@ -181,7 +227,7 @@
     },
     {
       id: "sub-w3",
-      title: "Week 3 - Subtracting Neighbor Numbers",
+      title: "Stage 3 - Subtracting Neighbor Numbers",
       focus: "Compare near twins.",
       description:
         "When numbers sit beside each other, subtraction just means checking for one or two leftovers.",
@@ -189,7 +235,7 @@
     },
     {
       id: "sub-w4",
-      title: "Week 4 - Subtracting Five, Six, and Seven",
+      title: "Stage 4 - Subtracting Five, Six, and Seven",
       focus: "Work with mid-sized hops.",
       description:
         "Take away five, six, and seven to emphasize decomposing numbers before counting back.",
@@ -197,7 +243,7 @@
     },
     {
       id: "sub-w5",
-      title: "Week 5 - Subtracting Nine",
+      title: "Stage 5 - Subtracting Nine",
       focus: "Drop nine using make-ten.",
       description:
         "Mirror the adding nine strategy in reverse - jump to ten and see what remains.",
@@ -205,7 +251,7 @@
     },
     {
       id: "sub-w6",
-      title: "Week 6 - Subtracting Eight",
+      title: "Stage 6 - Subtracting Eight",
       focus: "Drop eight smoothly.",
       description:
         "Continue the near-ten story: subtract eight from every number with answers that stay positive.",
@@ -213,7 +259,7 @@
     },
     {
       id: "sub-w7",
-      title: "Week 7 - Subtracting 3-5 From >10",
+      title: "Stage 7 - Subtracting 3-5 From >10",
       focus: "Work inside the teens.",
       description:
         "Focus on teen numbers taking away three, four, or five to highlight regrouping ideas.",
@@ -221,7 +267,7 @@
     },
     {
       id: "sub-w8",
-      title: "Week 8 - Subtracting 6 & 7 From >10",
+      title: "Stage 8 - Subtracting 6 & 7 From >10",
       focus: "Bigger jumps in the teens.",
       description:
         "Finish with sixes and sevens taken away from numbers greater than ten to cement fluency.",
@@ -230,14 +276,14 @@
   ];
 
   const programData = {
-    addition: additionWeeks,
-    subtraction: subtractionWeeks,
+    addition: additionStages,
+    subtraction: subtractionStages,
   };
 
   // State & DOM references ------------------------------------------------
   const state = {
     mode: "addition",
-    week: null,
+    stage: null,
     facts: [],
     tracker: [],
     activeIndex: null,
@@ -245,13 +291,14 @@
     timerId: null,
     countdown: 0,
     nextQuestionTimeout: null,
+    completedStages: loadStageProgress(),
   };
 
   const refs = {
-    weekSummary: document.getElementById("weekSummary"),
-    weekMenu: document.getElementById("weekMenu"),
-    weekDescription: document.getElementById("weekDescription"),
-    weekLabel: document.getElementById("weekLabel"),
+    stageMenu: document.getElementById("stageMenu"),
+    stageDescription: document.getElementById("stageDescription"),
+    stageStatus: document.getElementById("stageStatus"),
+    stageLabel: document.getElementById("stageLabel"),
     startButton: document.getElementById("startButton"),
     timeSelect: document.getElementById("timeSelect"),
     timerDisplay: document.getElementById("timerDisplay"),
@@ -262,6 +309,9 @@
     answerInput: document.getElementById("answerInput"),
     submitButton: document.getElementById("submitButton"),
     scoreboard: document.getElementById("scoreboard"),
+    menuView: document.getElementById("menuView"),
+    gameView: document.getElementById("gameView"),
+    backButton: document.getElementById("backButton"),
   };
 
   const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
@@ -274,6 +324,32 @@
         .trim();
     }
     return cssCache[name];
+  };
+
+  const isStageCompleted = (stageId) => Boolean(state.completedStages[stageId]);
+
+  const markCurrentStageCompleted = () => {
+    if (!state.stage) return;
+    if (isStageCompleted(state.stage.id)) return;
+    state.completedStages[state.stage.id] = { completedAt: Date.now() };
+    saveStageProgress(state.completedStages);
+    updateStageStatusDisplay();
+    renderStageMenu();
+  };
+
+  const resetStageDetails = () => {
+    refs.stageDescription.textContent = defaultStageDescription;
+    refs.stageStatus.textContent = defaultStageStatus;
+  };
+
+  const updateStageStatusDisplay = () => {
+    if (!state.stage) {
+      resetStageDetails();
+      return;
+    }
+    refs.stageStatus.textContent = isStageCompleted(state.stage.id)
+      ? "Status: Completed - replay any time!"
+      : "Status: In progress";
   };
 
   // Event wiring ----------------------------------------------------------
@@ -289,6 +365,7 @@
         handleSubmit();
       }
     });
+    refs.backButton.addEventListener("click", returnToMenu);
 
     handleModeChange(state.mode);
     buildScoreboard();
@@ -297,16 +374,15 @@
   const handleModeChange = (mode) => {
     if (!programData[mode]) return;
     state.mode = mode;
-    state.week = null;
+    state.stage = null;
     state.facts = [];
     state.tracker = [];
     state.activeIndex = null;
     state.timerLimit = parseInt(refs.timeSelect.value, 10);
     refs.startButton.disabled = true;
-    refs.startButton.textContent = "Begin Practice";
-    refs.weekDescription.textContent =
-      "Tap a week to preview its focus, then start the practice set.";
-    refs.weekLabel.textContent = "Select a week to begin.";
+    refs.startButton.textContent = "Start Game";
+    resetStageDetails();
+    refs.stageLabel.textContent = "Select a stage to begin.";
     refs.questionPrompt.textContent = "Ready when you are!";
     refs.statusText.textContent = "";
     refs.lastFactDisplay.textContent = "None yet";
@@ -315,9 +391,9 @@
     clearPendingQuestion();
     resetAnswerInputs();
     buildScoreboard();
-    renderWeekSummary();
-    renderWeekMenu();
+    renderStageMenu();
     highlightModeButton();
+    showMenuView();
   };
 
   const highlightModeButton = () => {
@@ -326,47 +402,45 @@
     });
   };
 
-  const renderWeekSummary = () => {
-    refs.weekSummary.innerHTML = "";
-    const fragment = document.createDocumentFragment();
-    programData[state.mode].forEach((week) => {
-      const li = document.createElement("li");
-      li.textContent = week.title;
-      fragment.appendChild(li);
-    });
-    refs.weekSummary.appendChild(fragment);
-  };
-
-  const renderWeekMenu = () => {
-    refs.weekMenu.innerHTML = "";
-    programData[state.mode].forEach((week) => {
+  const renderStageMenu = () => {
+    refs.stageMenu.innerHTML = "";
+    programData[state.mode].forEach((stage) => {
+      const isCompleted = isStageCompleted(stage.id);
       const card = document.createElement("button");
       card.type = "button";
-      card.className = "week-card";
-      card.dataset.weekId = week.id;
+      card.className = "stage-card";
+      if (isCompleted) {
+        card.classList.add("stage-card--completed");
+      }
+      if (state.stage && state.stage.id === stage.id) {
+        card.classList.add("active");
+      }
+      card.dataset.stageId = stage.id;
       card.innerHTML = `
-        <p class="week-card__tag">${week.focus}</p>
-        <h3 class="week-card__title">${week.title}</h3>
+        <div class="stage-card__top">
+          <p class="stage-card__tag">${stage.focus}</p>
+          ${isCompleted ? '<span class="stage-card__badge">Done</span>' : ""}
+        </div>
+        <h3 class="stage-card__title">${stage.title}</h3>
       `;
-      card.addEventListener("click", () => selectWeek(week.id));
-      refs.weekMenu.appendChild(card);
+      card.addEventListener("click", () => selectStage(stage.id));
+      refs.stageMenu.appendChild(card);
     });
   };
 
-  const selectWeek = (weekId) => {
-    const week = programData[state.mode].find((w) => w.id === weekId);
-    if (!week) return;
-    state.week = week;
+  const selectStage = (stageId) => {
+    const stage = programData[state.mode].find((w) => w.id === stageId);
+    if (!stage) return;
+    state.stage = stage;
     state.facts = [];
     state.tracker = [];
     state.activeIndex = null;
-    refs.weekDescription.textContent = week.description;
-    refs.weekLabel.textContent = week.title;
+    refs.stageDescription.textContent = stage.description;
+    refs.stageLabel.textContent = stage.title;
+    updateStageStatusDisplay();
     refs.startButton.disabled = false;
-    refs.statusText.textContent = "Press Begin Practice to launch the board.";
-    Array.from(refs.weekMenu.children).forEach((card) => {
-      card.classList.toggle("active", card.dataset.weekId === weekId);
-    });
+    refs.statusText.textContent = "Press Start Game to launch the board.";
+    renderStageMenu();
     stopTimer();
     clearPendingQuestion();
     resetAnswerInputs();
@@ -374,13 +448,14 @@
   };
 
   const startPractice = () => {
-    if (!state.week) return;
+    if (!state.stage) return;
     clearPendingQuestion();
-    state.facts = state.week.buildFacts();
+    state.facts = state.stage.buildFacts();
     state.tracker = state.facts.map(() => 2);
     state.timerLimit = parseInt(refs.timeSelect.value, 10);
     state.activeIndex = null;
-    refs.startButton.textContent = "Restart Week";
+    refs.startButton.textContent = "Restart Stage";
+    showGameView();
     refs.answerInput.disabled = false;
     refs.submitButton.disabled = false;
     refs.statusText.textContent = "Scoreboard ready! Answer each fact before time runs out.";
@@ -423,11 +498,12 @@
   const handleCompletion = () => {
     refs.questionPrompt.textContent = "You mastered every fact!";
     refs.statusText.textContent =
-      "Great work! Pick another week or restart to mix them again.";
+      "Great work! Pick another stage or restart to mix them again.";
     refs.answerInput.disabled = true;
     refs.submitButton.disabled = true;
     refs.timerDisplay.textContent = "Done";
     clearPendingQuestion();
+    markCurrentStageCompleted();
   };
 
   const handleSubmit = () => {
@@ -532,14 +608,14 @@
       container
         .append("p")
         .attr("class", "scoreboard-placeholder")
-        .text("Choose a week and press Begin Practice to see progress tiles.");
+        .text("Choose a stage and press Start Game to see progress tiles.");
       return;
     }
     const total = state.facts.length;
     const columns = Math.ceil(Math.sqrt(total));
     const rows = Math.ceil(total / columns);
-    const tile = 40;
-    const gap = 6;
+    const tile = 28;
+    const gap = 4;
     const width = columns * tile + (columns - 1) * gap;
     const height = rows * tile + (rows - 1) * gap;
     const svg = container
@@ -569,6 +645,46 @@
       .attr("ry", 8);
 
     groups.append("title").text((d) => `${d.prompt} = ${d.answer}`);
+  };
+
+  const showMenuView = () => {
+    refs.menuView.classList.remove("hidden");
+    refs.menuView.removeAttribute("hidden");
+    refs.gameView.classList.add("hidden");
+    refs.gameView.setAttribute("hidden", "");
+  };
+
+  const showGameView = () => {
+    refs.gameView.classList.remove("hidden");
+    refs.gameView.removeAttribute("hidden");
+    refs.menuView.classList.add("hidden");
+    refs.menuView.setAttribute("hidden", "");
+  };
+
+  const returnToMenu = () => {
+    stopTimer();
+    clearPendingQuestion();
+    resetAnswerInputs();
+    refs.timerDisplay.textContent = "-";
+    refs.progressDisplay.textContent = "0 mastered";
+    refs.lastFactDisplay.textContent = "None yet";
+    refs.questionPrompt.textContent = "Ready when you are!";
+    refs.statusText.textContent = "";
+    refs.stageLabel.textContent = state.stage
+      ? state.stage.title
+      : "Select a stage to begin.";
+    if (!state.stage) {
+      resetStageDetails();
+    } else {
+      updateStageStatusDisplay();
+    }
+    state.facts = [];
+    state.tracker = [];
+    state.activeIndex = null;
+    refs.startButton.textContent = "Start Game";
+    buildScoreboard();
+    renderStageMenu();
+    showMenuView();
   };
 
   const clearPendingQuestion = () => {
